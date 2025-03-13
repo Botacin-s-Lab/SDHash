@@ -1,17 +1,19 @@
 name: Build and Release
 
+permissions:
+  contents: write  # Grants permission to create releases
+
 on:
   push:
     branches:
-      - main  # Runs build on push to main
+      - main
     tags:
-      - 'v*.*.*'  # Runs release on tag push (e.g., v1.0.0)
+      - 'v*.*.*'
   pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Run this job on push to main or pull requests
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'pull_request'
 
     steps:
@@ -23,23 +25,22 @@ jobs:
 
       - name: Compile the project
         run: |
-          make  # Build the project
+          make
           g++ sdhash-src/sdhash.o sdhash-src/sdhash_threads.o libsdbf.a -o JC-sdhash -fopenmp \
             -L. -L./external/stage/lib -L/usr/lib/x86_64-linux-gnu \
             -lboost_system -lboost_filesystem -lboost_program_options -lc -lm -lcrypto -lboost_thread -lpthread
-          mv JC-sdhash SDhash  # Rename the output binary
-          ls -lah  # List files to verify the build
+          mv JC-sdhash SDhash
+          ls -lah
 
       - name: Create release artifact
         uses: actions/upload-artifact@v4
         with:
           name: SDhash-binary
-          path: ./SDhash  # Path to the renamed binary
+          path: ./SDhash
 
   release:
     needs: build
     runs-on: ubuntu-latest
-    # Run this job only when a tag is pushed
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
@@ -52,9 +53,12 @@ jobs:
           name: SDhash-binary
           path: .
 
+      - name: Verify artifact
+        run: ls -lah  # Debug step to confirm SDhash exists
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ./SDhash  # Uploads the renamed binary
+          files: ./SDhash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
