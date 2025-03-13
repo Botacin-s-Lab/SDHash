@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  autopyara:
+    stdin_open: true
+    tty: true
+    build: .
+    command: bash
+    cpuset: "64"  # Limits to 10 cores
+    container_name: sdhash
+    volumes:
+      - /home/mabon/research/Autoyara/Jc_sdhash/:/usr/src/app/
