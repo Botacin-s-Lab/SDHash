@@ -1,12 +1,12 @@
 name: Build and Release
 
 permissions:
-  contents: write  # Grants permission to create releases
+  contents: write
 
 on:
   push:
     branches:
-      - main  # Trigger on push to main only
+      - main
 
 jobs:
   build-and-release:
@@ -21,19 +21,30 @@ jobs:
 
       - name: Compile the project
         run: |
-          make  # Build the project
+          make
           g++ sdhash-src/sdhash.o sdhash-src/sdhash_threads.o libsdbf.a -o JC-sdhash -fopenmp \
             -L. -L./external/stage/lib -L/usr/lib/x86_64-linux-gnu \
             -lboost_system -lboost_filesystem -lboost_program_options -lc -lm -lcrypto -lboost_thread -lpthread
-          mv JC-sdhash SDhash  # Rename the output binary
-          ls -lah  # List files to verify the build
+          mv JC-sdhash SDhash
+          ls -lah
+
+      - name: Generate Tag
+        id: tag
+        run: echo "TAG_NAME=auto-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Create Tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag ${{ steps.tag.outputs.TAG_NAME }}
+          git push origin ${{ steps.tag.outputs.TAG_NAME }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ./SDhash  # Uploads the renamed binary
-          draft: true      # Creates a draft release (optional, remove if you want published releases)
-          name: "Release ${{ github.sha }}"  # Names the release after the commit SHA
-          body: "Automated release for commit ${{ github.sha }}"  # Release notes
+          files: ./SDhash
+          tag_name: ${{ steps.tag.outputs.TAG_NAME }}
+          name: "Release ${{ steps.tag.outputs.TAG_NAME }}"
+          body: "Automated release for commit ${{ github.sha }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
