@@ -6,15 +6,11 @@ permissions:
 on:
   push:
     branches:
-      - main
-    tags:
-      - 'v*.*.*'
-  pull_request:
+      - main  # Trigger on push to main only
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'pull_request'
 
     steps:
       - name: Checkout repository
@@ -25,40 +21,19 @@ jobs:
 
       - name: Compile the project
         run: |
-          make
+          make  # Build the project
           g++ sdhash-src/sdhash.o sdhash-src/sdhash_threads.o libsdbf.a -o JC-sdhash -fopenmp \
             -L. -L./external/stage/lib -L/usr/lib/x86_64-linux-gnu \
             -lboost_system -lboost_filesystem -lboost_program_options -lc -lm -lcrypto -lboost_thread -lpthread
-          mv JC-sdhash SDhash
-          ls -lah
-
-      - name: Create release artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SDhash-binary
-          path: ./SDhash
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: SDhash-binary
-          path: .
-
-      - name: Verify artifact
-        run: ls -lah  # Debug step to confirm SDhash exists
+          mv JC-sdhash SDhash  # Rename the output binary
+          ls -lah  # List files to verify the build
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ./SDhash
+          files: ./SDhash  # Uploads the renamed binary
+          draft: true      # Creates a draft release (optional, remove if you want published releases)
+          name: "Release ${{ github.sha }}"  # Names the release after the commit SHA
+          body: "Automated release for commit ${{ github.sha }}"  # Release notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
