@@ -16,6 +16,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Get commit message
+        id: commit_message
+        run: echo "MESSAGE=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
+
+      - name: Check if commit message is a version tag
+        id: check_version
+        run: |
+          if [[ "${{ env.MESSAGE }}" =~ ^V\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            VERSION=$(echo "${{ env.MESSAGE }}" | awk '{print $2}')
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+            echo "MATCH=1" >> $GITHUB_ENV
+          else
+            echo "MATCH=0" >> $GITHUB_ENV
+          fi
+
+      - name: Stop if no valid version tag
+        if: env.MATCH != '1'
+        run: echo "Commit message does not contain a valid version tag. Skipping release." && exit 0
+
       - name: Install dependencies
         run: sudo apt update && sudo apt install -y build-essential libssl-dev libboost-all-dev
 
@@ -28,23 +47,19 @@ jobs:
           mv JC-sdhash SDhash
           ls -lah
 
-      - name: Generate Tag
-        id: tag
-        run: echo "TAG_NAME=auto-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
-
-      - name: Create Tag
+      - name: Create Git Tag
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git tag ${{ steps.tag.outputs.TAG_NAME }}
-          git push origin ${{ steps.tag.outputs.TAG_NAME }}
+          git tag ${{ env.VERSION }}
+          git push origin ${{ env.VERSION }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: ./SDhash
-          tag_name: ${{ steps.tag.outputs.TAG_NAME }}
-          name: "Release ${{ steps.tag.outputs.TAG_NAME }}"
+          tag_name: ${{ env.VERSION }}
+          name: "Release ${{ env.VERSION }}"
           body: "Automated release for commit ${{ github.sha }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
