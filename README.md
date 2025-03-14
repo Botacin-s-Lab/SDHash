@@ -35,7 +35,8 @@ make
 
 ```bash
 # Download precompiled SDhash
-wget https://github.com/Botacin-s-Lab/SDHash/releases/download/auto-20250314-000518/SDhash -O SDhash
+
+wget $(curl -s https://api.github.com/repos/Botacin-s-Lab/SDHash/releases/latest | grep "browser_download_url" | cut -d '"' -f 4) -O SDhash
 
 # Make SDhash executable
 chmod +x SDhash
